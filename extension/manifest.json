@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "WebRater — Détecteur de texte IA",
+  "version": "1.0.0",
+  "description": "Analysez en 2 clics si un texte sélectionné sur le web a été écrit par une IA ou par un humain.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["contextMenus", "scripting"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://your-backend-url.onrender.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
