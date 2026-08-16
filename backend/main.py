@@ -16,7 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Remplacement de mixtral-8x7b-32768 par llama-3.2-3b-preview (modèle actif)
 GROQ_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
@@ -24,12 +23,13 @@ GROQ_MODELS = [
     "gemma2-9b-it",
 ]
 
+# Récupère la clé principale si les clés individuelles ne sont pas définies
 DEFAULT_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_KEYS = [
-    os.getenv("GROQ_API_KEY_1", DEFAULT_KEY),
-    os.getenv("GROQ_API_KEY_2", DEFAULT_KEY),
-    os.getenv("GROQ_API_KEY_3", DEFAULT_KEY),
-    os.getenv("GROQ_API_KEY_4", DEFAULT_KEY),
+    os.getenv("GROQ_API_KEY_1") or DEFAULT_KEY,
+    os.getenv("GROQ_API_KEY_2") or DEFAULT_KEY,
+    os.getenv("GROQ_API_KEY_3") or DEFAULT_KEY,
+    os.getenv("GROQ_API_KEY_4") or DEFAULT_KEY,
 ]
 
 MAX_CHARS_ANALYSIS = 1500
@@ -100,7 +100,8 @@ async def query_single_groq(
             "reason": data.get("reason", "Analyse effectuée."),
         }
     except Exception as e:
-        return {"score": None, "reason": f"Erreur modèle: {str(e)}"}
+        print(f"Erreur sur le modèle {model_name}: {e}")
+        return {"score": None, "reason": f"Indisponible: {str(e)}"}
 
 
 @app.post("/analyze")
@@ -113,7 +114,7 @@ async def analyze(payload: AnalyzeRequest):
         )
 
     truncated_text = text[:MAX_CHARS_ANALYSIS]
-    web_info = check_web_presence(truncated_text)
+    web_info = await asyncio.to_thread(check_web_presence, truncated_text)
 
     tasks = [
         query_single_groq(model, key, truncated_text, web_info)
@@ -125,8 +126,6 @@ async def analyze(payload: AnalyzeRequest):
     final_prob = sum(valid_scores) / len(valid_scores) if valid_scores else 0.5
 
     model_votes = []
-    signals = []
-
     for idx, r in enumerate(results):
         if r["score"] is not None:
             ai_pct = int(r["score"] * 100)
@@ -147,5 +146,4 @@ async def analyze(payload: AnalyzeRequest):
         "has_plagiarism": web_info["exists"],
         "sources": web_info["sources"],
         "model_votes": model_votes,
-        "signals": signals,
     }
